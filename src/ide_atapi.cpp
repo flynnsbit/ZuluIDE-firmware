@@ -25,6 +25,7 @@
 
 #include "ide_atapi.h"
 #include "ide_utils.h"
+#include "ide_toolbox.h"
 #include "atapi_constants.h"
 #include "ZuluIDE.h"
 #include "ZuluIDE_config.h"
@@ -797,6 +798,15 @@ bool IDEATAPIDevice::handle_atapi_command(const uint8_t *cmd)
         case ATAPI_CMD_WRITE10:         return atapi_write(cmd);
         case ATAPI_CMD_WRITE12:         return atapi_write(cmd);
         case ATAPI_CMD_WRITE_AND_VERIFY10: return atapi_write(cmd);
+
+        // ZuluIDE Toolbox vendor commands
+        case ATAPI_CMD_TOOLBOX_COUNT_IMAGES:  return atapi_toolbox_count_images(cmd);
+        case ATAPI_CMD_TOOLBOX_LIST_IMAGES:   return atapi_toolbox_list_images(cmd);
+        case ATAPI_CMD_TOOLBOX_GET_CURRENT:   return atapi_toolbox_get_current(cmd);
+        case ATAPI_CMD_TOOLBOX_SELECT_IMAGE:  return atapi_toolbox_select_image(cmd);
+        case ATAPI_CMD_TOOLBOX_NEXT_IMAGE:    return atapi_toolbox_next_image(cmd);
+        case ATAPI_CMD_TOOLBOX_PREV_IMAGE:    return atapi_toolbox_prev_image(cmd);
+        case ATAPI_CMD_TOOLBOX_GET_INFO:      return atapi_toolbox_get_info(cmd);
 
         default:
             logmsg("-- WARNING: Unsupported ATAPI command ", get_atapi_command_name(cmd[0]));

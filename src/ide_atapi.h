@@ -216,6 +216,15 @@ protected:
     virtual bool atapi_read(const uint8_t *cmd);
     virtual bool atapi_write(const uint8_t *cmd);
 
+    // ZuluIDE Toolbox vendor command handlers
+    virtual bool atapi_toolbox_count_images(const uint8_t *cmd);
+    virtual bool atapi_toolbox_list_images(const uint8_t *cmd);
+    virtual bool atapi_toolbox_get_current(const uint8_t *cmd);
+    virtual bool atapi_toolbox_select_image(const uint8_t *cmd);
+    virtual bool atapi_toolbox_next_image(const uint8_t *cmd);
+    virtual bool atapi_toolbox_prev_image(const uint8_t *cmd);
+    virtual bool atapi_toolbox_get_info(const uint8_t *cmd);
+
     // Fill in data fields of identify packet device response
     virtual void atapi_identify_packet_device_response(uint16_t *idf);
 

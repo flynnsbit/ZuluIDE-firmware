@@ -97,7 +97,15 @@ X(ATAPI_CMD_READ_CD_MSF                   , 0xB9) \
 X(ATAPI_CMD_SET_CD_SPEED                  , 0xBB) \
 X(ATAPI_CMD_MECHANISM_STATUS              , 0xBD) \
 X(ATAPI_CMD_READ_CD                       , 0xBE) \
-X(ATAPI_CMD_SEND_DISC_STRUCTURE           , 0xBF)
+X(ATAPI_CMD_SEND_DISC_STRUCTURE           , 0xBF) \
+/* ZuluIDE Toolbox vendor commands for host-side image management */ \
+X(ATAPI_CMD_TOOLBOX_COUNT_IMAGES          , 0xD0) \
+X(ATAPI_CMD_TOOLBOX_LIST_IMAGES           , 0xD1) \
+X(ATAPI_CMD_TOOLBOX_GET_CURRENT           , 0xD2) \
+X(ATAPI_CMD_TOOLBOX_SELECT_IMAGE          , 0xD3) \
+X(ATAPI_CMD_TOOLBOX_NEXT_IMAGE            , 0xD4) \
+X(ATAPI_CMD_TOOLBOX_PREV_IMAGE            , 0xD5) \
+X(ATAPI_CMD_TOOLBOX_GET_INFO              , 0xD6)
 
 enum atapi_cmd_t {
 #define ATAPI_ENUM_ENTRY(name, code) name = code,
