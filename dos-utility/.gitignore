@@ -1,0 +1,11 @@
+# Build artifacts
+*.o
+*.obj
+*.err
+*.map
+
+# Test output
+OUTPUT.TXT
+RESULT.TXT
+test.bat
+runtest.bat

@@ -456,12 +456,13 @@ int zuluide_list_images(ide_drive_t *drive, uint8_t *buffer, uint16_t buflen, ui
 /*
  * Get current image filename
  */
-int zuluide_get_current_image(ide_drive_t *drive, char *filename, uint8_t maxlen)
+int zuluide_get_current_image(ide_drive_t *drive, char *filename, uint16_t maxlen)
 {
     uint8_t cdb[12] = {0};
     
     cdb[0] = ATAPI_CMD_ZULUIDE_CURRENT;
-    cdb[8] = maxlen;
+    cdb[7] = (maxlen >> 8) & 0xFF;
+    cdb[8] = maxlen & 0xFF;
     
     return atapi_packet_cmd(drive, cdb, (uint8_t *)filename, maxlen, 1);
 }

@@ -136,7 +136,7 @@ int atapi_get_event_status(ide_drive_t *drive, uint8_t *buffer, uint8_t len);
 /* ZuluIDE Toolbox commands (require firmware support) */
 int zuluide_get_image_count(ide_drive_t *drive, uint16_t *count);
 int zuluide_list_images(ide_drive_t *drive, uint8_t *buffer, uint16_t buflen, uint16_t start_idx);
-int zuluide_get_current_image(ide_drive_t *drive, char *filename, uint8_t maxlen);
+int zuluide_get_current_image(ide_drive_t *drive, char *filename, uint16_t maxlen);
 int zuluide_select_image(ide_drive_t *drive, uint16_t index);
 int zuluide_select_image_by_name(ide_drive_t *drive, const char *filename);
 int zuluide_next_image(ide_drive_t *drive);
