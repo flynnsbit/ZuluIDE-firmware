@@ -13,6 +13,7 @@
 
 #include "ide_toolbox.h"
 #include "ide_atapi.h"
+#include "atapi_constants.h"
 #include "ZuluIDE_log.h"
 #include "ZuluIDE_config.h"
 #include <zuluide/images/image_iterator.h>

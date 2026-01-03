@@ -22,16 +22,17 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include "atapi_constants.h"
 
 // Toolbox vendor command opcodes (0xD0-0xD6 range)
-// These are in the vendor-specific ATAPI opcode range
-#define ATAPI_CMD_TOOLBOX_COUNT_IMAGES      0xD0
-#define ATAPI_CMD_TOOLBOX_LIST_IMAGES       0xD1
-#define ATAPI_CMD_TOOLBOX_GET_CURRENT       0xD2
-#define ATAPI_CMD_TOOLBOX_SELECT_IMAGE      0xD3
-#define ATAPI_CMD_TOOLBOX_NEXT_IMAGE        0xD4
-#define ATAPI_CMD_TOOLBOX_PREV_IMAGE        0xD5
-#define ATAPI_CMD_TOOLBOX_GET_INFO          0xD6
+// These are defined in atapi_constants.h as part of the ATAPI_COMMAND_LIST X-macro:
+//   ATAPI_CMD_TOOLBOX_COUNT_IMAGES   = 0xD0
+//   ATAPI_CMD_TOOLBOX_LIST_IMAGES    = 0xD1
+//   ATAPI_CMD_TOOLBOX_GET_CURRENT    = 0xD2
+//   ATAPI_CMD_TOOLBOX_SELECT_IMAGE   = 0xD3
+//   ATAPI_CMD_TOOLBOX_NEXT_IMAGE     = 0xD4
+//   ATAPI_CMD_TOOLBOX_PREV_IMAGE     = 0xD5
+//   ATAPI_CMD_TOOLBOX_GET_INFO       = 0xD6
 
 // Toolbox response structure for image count (ATAPI_CMD_TOOLBOX_COUNT_IMAGES)
 // Returns 4 bytes:
