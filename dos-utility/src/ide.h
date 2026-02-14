@@ -21,9 +21,9 @@
 #define IDE_REG_ERROR       0x01    /* Error register (read) */
 #define IDE_REG_FEATURES    0x01    /* Features register (write) */
 #define IDE_REG_SECTOR_CNT  0x02    /* Sector count / Interrupt reason */
-#define IDE_REG_LBA_LOW     0x03    /* LBA low / Byte count low */
-#define IDE_REG_LBA_MID     0x04    /* LBA mid / Byte count low */
-#define IDE_REG_LBA_HIGH    0x05    /* LBA high / Byte count high */
+#define IDE_REG_LBA_LOW     0x03    /* LBA low / Tag (ATAPI) */
+#define IDE_REG_LBA_MID     0x04    /* LBA mid / Byte count low (ATAPI) */
+#define IDE_REG_LBA_HIGH    0x05    /* LBA high / Byte count high (ATAPI) */
 #define IDE_REG_DEVICE      0x06    /* Device/Head register */
 #define IDE_REG_STATUS      0x07    /* Status register (read) */
 #define IDE_REG_COMMAND     0x07    /* Command register (write) */
