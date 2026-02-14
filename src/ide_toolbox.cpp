@@ -164,8 +164,8 @@ bool IDEATAPIDevice::atapi_toolbox_get_current(const uint8_t *cmd)
         return atapi_cmd_error(ATAPI_SENSE_ILLEGAL_REQ, ATAPI_ASC_INVALID_CMD);
     }
 
-    uint8_t alloc_len = cmd[8];
-    if (alloc_len == 0) alloc_len = 255;
+    uint16_t alloc_len = (cmd[7] << 8) | cmd[8];
+    if (alloc_len == 0) alloc_len = TOOLBOX_MAX_FILENAME_LEN;
     
     char filename[TOOLBOX_MAX_FILENAME_LEN + 1];
     memset(filename, 0, sizeof(filename));

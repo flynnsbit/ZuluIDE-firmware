@@ -139,8 +139,8 @@ COMMAND REFERENCE
   Response: Null-terminated filename strings, concatenated
 
 0xD2 - TOOLBOX_GET_CURRENT
-  CDB: [D2 00 00 00 00 00 00 00 LL 00 00 00]
-    LL = allocation length
+  CDB: [D2 00 00 00 00 00 00 LL LL 00 00 00]
+    LL LL = allocation length (big-endian, standard ATAPI)
   Response: Null-terminated current image filename
 
 0xD3 - TOOLBOX_SELECT_IMAGE

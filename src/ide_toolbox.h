@@ -50,7 +50,7 @@
 
 // Toolbox response for current image (ATAPI_CMD_TOOLBOX_GET_CURRENT)
 // CDB format:
-//   Byte 8: Allocation length
+//   Byte 7-8: Allocation length (big-endian uint16_t)
 // Response:
 //   Null-terminated filename string
 
