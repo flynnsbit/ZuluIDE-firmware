@@ -164,8 +164,41 @@ COMMAND REFERENCE
   CDB: [D6 00 00 00 00 00 00 00 40 00 00 00]
   Response (64 bytes):
     [0-3]   "ZUTB" magic
-    [4]     Protocol version (1)
+    [4]     Protocol version (2)
     [5]     Device type
     [6-7]   Firmware version
-    [8-23]  Build string
+    [8-23]  Build string (ZULU_FW_VERSION from ZuluIDE_config.h)
     [24-63] Reserved
+
+================================================================================
+UPSTREAM COMPATIBILITY
+================================================================================
+
+Tested and merged with upstream ZuluIDE v2026.02.12 (d3013d6).
+
+Key upstream changes that interact with the Toolbox:
+
+1. insert_next_media() return type changed from void to bool.
+   - Toolbox does NOT call insert_next_media(); it uses load_image() ->
+     set_image() for image selection, so this change has no impact.
+
+2. ignore_prevent_removal default changed from true to false.
+   - The host OS can now lock the tray by default. The Toolbox bypasses
+     this intentionally: select_image_by_name() calls load_image(image,
+     false) which goes through set_image(), not the eject/insert flow.
+     This is by design -- the Toolbox is a direct management interface.
+
+3. atapi_cmd_ok() no longer clears sense when unit_attention is pending.
+   - After a Toolbox image selection, CDROMDevice::set_image() calls
+     loaded_new_media() which sets unit_attention=true. The next command
+     from the host will see UNIT ATTENTION. The DOS utility's retry
+     wrapper (atapi_packet_cmd_retry) handles this transparently.
+
+4. atapi_test_unit_ready() reworked to return UNIT ATTENTION immediately
+   after successful media insertion.
+   - The DOS utility's atapi_test_unit_ready() bypasses the retry
+     wrapper (by design), so callers can check device state explicitly.
+
+5. CDROMDevice::set_image() now calls loaded_new_media() on valid images.
+   - This means Toolbox image selection properly notifies the host of
+     media changes via UNIT ATTENTION. The DOS utility handles this.
