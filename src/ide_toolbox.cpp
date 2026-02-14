@@ -247,19 +247,34 @@ bool IDEATAPIDevice::atapi_toolbox_next_image(const uint8_t *cmd)
 
     dbgmsg("Toolbox: NEXT_IMAGE");
     
-    // Trigger eject which will load next image
-    if (m_removable.ejected)
+    // Get current index and select next (with wrapping)
+    int16_t current = get_current_image_index();
+    uint16_t count = get_image_count();
+    
+    if (count == 0)
     {
-        // Already ejected, insert next
-        insert_next_media(m_image);
+        return atapi_cmd_error(ATAPI_SENSE_ILLEGAL_REQ, ATAPI_ASC_INVALID_FIELD);
+    }
+    
+    uint16_t next_idx;
+    if (current < 0 || (uint16_t)(current + 1) >= count)
+    {
+        // No current image or at last image: wrap to first
+        next_idx = 0;
     }
     else
     {
-        // Eject first, then firmware auto-loads next
-        eject_media();
+        next_idx = (uint16_t)(current + 1);
     }
     
-    return atapi_cmd_ok();
+    if (select_image_by_index(next_idx))
+    {
+        return atapi_cmd_ok();
+    }
+    else
+    {
+        return atapi_cmd_error(ATAPI_SENSE_ILLEGAL_REQ, ATAPI_ASC_INVALID_FIELD);
+    }
 }
 
 /**
