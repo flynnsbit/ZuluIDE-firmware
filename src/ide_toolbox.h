@@ -71,7 +71,7 @@
 //   Byte 24-63: Reserved (zeros)
 #define TOOLBOX_INFO_RESPONSE_SIZE      64
 #define TOOLBOX_MAGIC                   "ZUTB"
-#define TOOLBOX_PROTOCOL_VERSION        1
+#define TOOLBOX_PROTOCOL_VERSION        2
 
 // Maximum filename length in responses
 #define TOOLBOX_MAX_FILENAME_LEN        255
