@@ -486,8 +486,14 @@ static bool select_image_by_name(const char *filename)
             size_t offset = fullname.length() - strlen(filename);
             if (strcasecmp(fullname.c_str() + offset, filename) == 0)
             {
-                load_image(image, false);
-                return true;
+                // Verify this is a proper path boundary match:
+                // either the match starts at the beginning of the string,
+                // or the character before the match is a path separator.
+                if (offset == 0 || fullname[offset - 1] == '/' || fullname[offset - 1] == '\\')
+                {
+                    load_image(image, false);
+                    return true;
+                }
             }
         }
     }
