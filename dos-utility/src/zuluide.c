@@ -73,15 +73,15 @@ int main(int argc, char *argv[])
     char *arg = NULL;
     int ret;
     
-    if (!g_config.quiet) {
-        printf("ZuluIDE DOS Utility v%s\n", VERSION);
-        printf("Copyright (c) 2024\n\n");
-    }
-    
     /* Parse command line */
     ret = parse_args(argc, argv, &cmd, &arg);
     if (ret != 0) {
         return ret;
+    }
+    
+    if (!g_config.quiet) {
+        printf("ZuluIDE DOS Utility v%s\n", VERSION);
+        printf("Copyright (c) 2024\n\n");
     }
     
     if (cmd == NULL) {
