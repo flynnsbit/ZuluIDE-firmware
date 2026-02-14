@@ -24,6 +24,63 @@
 static bool g_toolbox_enabled = false;
 static bool g_toolbox_initialized = false;
 
+// ============================================================================
+// Image list cache
+//
+// Iterating the SD card for every toolbox command is expensive and introduces
+// latency that is noticeable over the IDE bus.  We cache the image list on
+// first access and invalidate it when the loaded image changes (which is the
+// only firmware-side event that can alter the effective image list ordering).
+// ============================================================================
+
+#define IMAGE_CACHE_MAX  256   // Maximum number of cached image entries
+
+struct ImageCache
+{
+    // Each entry stores a null-terminated filename.  We keep a flat array of
+    // fixed-size buffers so that the cache is entirely static (no heap).
+    char filenames[IMAGE_CACHE_MAX][TOOLBOX_MAX_FILENAME_LEN + 1];
+    uint16_t count;
+    bool valid;
+};
+
+static ImageCache g_image_cache = { {}, 0, false };
+
+/**
+ * Invalidate the image cache so it will be rebuilt on next access.
+ */
+static void image_cache_invalidate(void)
+{
+    g_image_cache.valid = false;
+}
+
+/**
+ * Populate the image cache by iterating the SD card once.
+ * No-op if the cache is already valid.
+ */
+static void image_cache_populate(void)
+{
+    if (g_image_cache.valid)
+        return;
+
+    zuluide::images::ImageIterator iterator;
+    iterator.Reset();
+
+    uint16_t count = 0;
+    while (iterator.MoveNext() && count < IMAGE_CACHE_MAX)
+    {
+        const auto& image = iterator.Get();
+        strncpy(g_image_cache.filenames[count], image.GetFilename().c_str(), TOOLBOX_MAX_FILENAME_LEN);
+        g_image_cache.filenames[count][TOOLBOX_MAX_FILENAME_LEN] = '\0';
+        count++;
+    }
+
+    g_image_cache.count = count;
+    g_image_cache.valid = true;
+
+    dbgmsg("Toolbox: Image cache populated with ", count, " entries");
+}
+
 /**
  * Initialize toolbox - read config settings
  */
@@ -99,7 +156,7 @@ bool IDEATAPIDevice::atapi_toolbox_count_images(const uint8_t *cmd)
 
 /**
  * Handle TOOLBOX_LIST_IMAGES command (0xD1)
- * Returns a list of image filenames
+ * Returns a list of image filenames (from cache)
  */
 bool IDEATAPIDevice::atapi_toolbox_list_images(const uint8_t *cmd)
 {
@@ -118,32 +175,21 @@ bool IDEATAPIDevice::atapi_toolbox_list_images(const uint8_t *cmd)
     
     memset(m_buffer.bytes, 0, alloc_len);
     
-    zuluide::images::ImageIterator iterator;
-    iterator.Reset();
+    image_cache_populate();
     
-    uint16_t current_idx = 0;
     uint16_t bytes_written = 0;
-    char filename[TOOLBOX_MAX_FILENAME_LEN + 1];
     
-    // Skip to start index
-    while (current_idx < start_idx && iterator.MoveNext())
+    // Fill buffer with filenames from cache starting at start_idx
+    for (uint16_t i = start_idx; i < g_image_cache.count && bytes_written < alloc_len - 1; i++)
     {
-        current_idx++;
-    }
-    
-    // Fill buffer with filenames
-    while (iterator.MoveNext() && bytes_written < alloc_len - 1)
-    {
-        const auto& image = iterator.Get();
-        const std::string& name = image.GetFilename();
-        size_t name_len = name.length();
+        size_t name_len = strlen(g_image_cache.filenames[i]);
         
         if (bytes_written + name_len + 1 > alloc_len)
         {
             break;  // No more room
         }
         
-        memcpy(&m_buffer.bytes[bytes_written], name.c_str(), name_len);
+        memcpy(&m_buffer.bytes[bytes_written], g_image_cache.filenames[i], name_len);
         bytes_written += name_len;
         m_buffer.bytes[bytes_written++] = '\0';  // Null terminator
     }
@@ -351,78 +397,56 @@ bool IDEATAPIDevice::atapi_toolbox_get_info(const uint8_t *cmd)
 }
 
 // ============================================================================
-// Helper function implementations
+// Helper function implementations (cache-backed)
 // ============================================================================
 
 /**
- * Get the count of available images
+ * Get the count of available images (from cache)
  */
 static uint16_t get_image_count(void)
 {
-    zuluide::images::ImageIterator iterator;
-    iterator.Reset();
-    
-    uint16_t count = 0;
-    while (iterator.MoveNext())
-    {
-        count++;
-    }
-    
-    return count;
+    image_cache_populate();
+    return g_image_cache.count;
 }
 
 /**
- * Get image filename at specified index
+ * Get image filename at specified index (from cache)
  */
 static bool get_image_at_index(uint16_t index, char *filename, size_t maxlen)
 {
-    zuluide::images::ImageIterator iterator;
-    iterator.Reset();
-    
-    uint16_t current = 0;
-    while (iterator.MoveNext())
-    {
-        if (current == index)
-        {
-            const auto& image = iterator.Get();
-            strncpy(filename, image.GetFilename().c_str(), maxlen);
-            filename[maxlen - 1] = '\0';
-            return true;
-        }
-        current++;
-    }
-    
-    return false;
+    image_cache_populate();
+
+    if (index >= g_image_cache.count)
+        return false;
+
+    strncpy(filename, g_image_cache.filenames[index], maxlen);
+    filename[maxlen - 1] = '\0';
+    return true;
 }
 
 /**
- * Get current image index (-1 if none)
+ * Get current image index (-1 if none), using the cache for lookup
  */
 static int16_t get_current_image_index(void)
 {
-    // Get current image name from the global image file
     extern IDEImageFile g_ide_imagefile;
-    
+
     char current_name[256];
     if (!g_ide_imagefile.get_image_name(current_name, sizeof(current_name)))
     {
         return -1;
     }
-    
-    zuluide::images::ImageIterator iterator;
-    iterator.Reset();
-    
-    int16_t index = 0;
-    while (iterator.MoveNext())
+
+    image_cache_populate();
+
+    for (uint16_t i = 0; i < g_image_cache.count; i++)
     {
-        const auto& image = iterator.Get();
-        if (strcmp(image.GetFilename().c_str(), current_name) == 0)
+        if (strcmp(g_image_cache.filenames[i], current_name) == 0)
         {
-            return index;
+            return (int16_t)i;
         }
-        index++;
     }
-    
+
     return -1;
 }
 
@@ -447,11 +471,17 @@ static bool select_image_by_index(uint16_t index)
         return false;
     }
     
+    // Invalidate cache before selecting — loading a new image may cause
+    // the firmware to re-scan the SD card or change internal state.
+    image_cache_invalidate();
     return select_image_by_name(filename);
 }
 
 /**
  * Select image by name
+ *
+ * Invalidates the image cache on success, since loading a new image may
+ * alter SD card state.
  */
 static bool select_image_by_name(const char *filename)
 {
@@ -467,6 +497,7 @@ static bool select_image_by_name(const char *filename)
         const auto& image = iterator.Get();
         if (strcmp(image.GetFilename().c_str(), filename) == 0)
         {
+            image_cache_invalidate();
             load_image(image, false);
             return true;
         }
@@ -490,6 +521,7 @@ static bool select_image_by_name(const char *filename)
                 // or the character before the match is a path separator.
                 if (offset == 0 || fullname[offset - 1] == '/' || fullname[offset - 1] == '\\')
                 {
+                    image_cache_invalidate();
                     load_image(image, false);
                     return true;
                 }
