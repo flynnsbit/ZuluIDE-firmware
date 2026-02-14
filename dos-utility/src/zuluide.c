@@ -12,7 +12,8 @@
  *   info              - Show device information
  *   status            - Show current status
  *   eject             - Eject current media (loads next image)
- *   next              - Load next image (same as eject)
+ *   next              - Load next image
+ *   prev              - Load previous image
  *   list              - List available images (requires firmware support)
  *   select <name>     - Select image by name (requires firmware support)
  *
@@ -56,6 +57,7 @@ static int cmd_info(void);
 static int cmd_status(void);
 static int cmd_eject(void);
 static int cmd_next(void);
+static int cmd_prev(void);
 static int cmd_list(void);
 static int cmd_select(const char *name);
 static int find_zuluide(void);
@@ -106,6 +108,9 @@ int main(int argc, char *argv[])
     else if (strcmp(cmd, "NEXT") == 0) {
         return cmd_next();
     }
+    else if (strcmp(cmd, "PREV") == 0) {
+        return cmd_prev();
+    }
     else if (strcmp(cmd, "LIST") == 0) {
         return cmd_list();
     }
@@ -134,7 +139,8 @@ static void print_help(void)
     printf("  info              Show device information\n");
     printf("  status            Show current media status\n");
     printf("  eject             Eject current media (loads next image)\n");
-    printf("  next              Load next image (same as eject)\n");
+    printf("  next              Load next image*\n");
+    printf("  prev              Load previous image*\n");
     printf("  list              List available images*\n");
     printf("  select <name>     Select image by filename*\n");
     printf("\n");
@@ -484,6 +490,38 @@ static int cmd_next(void)
         if (!g_config.quiet) {
             printf("Next image command sent successfully.\n");
         }
+    }
+    else {
+        printf("Error: %s\n", get_error_string(ret));
+    }
+    
+    return ret;
+}
+
+/*
+ * Load previous image (requires firmware Toolbox support)
+ */
+static int cmd_prev(void)
+{
+    int ret;
+    
+    ret = find_zuluide();
+    if (ret != IDE_OK) return ret;
+    
+    if (!g_config.quiet) {
+        printf("Loading previous image...\n");
+    }
+    
+    ret = zuluide_prev_image(&g_drive);
+    
+    if (ret == IDE_OK) {
+        if (!g_config.quiet) {
+            printf("Previous image command sent successfully.\n");
+        }
+    }
+    else if (ret == IDE_ERR_COMMAND) {
+        printf("Error: Toolbox commands not supported by firmware.\n");
+        printf("Please update ZuluIDE firmware to a version with Toolbox support.\n");
     }
     else {
         printf("Error: %s\n", get_error_string(ret));
