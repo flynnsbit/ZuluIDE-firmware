@@ -74,12 +74,12 @@ static void ide_phy_clear_event(uint32_t event)
 
 void core1_log_poll();
 
-void ide_phy_reset(const ide_phy_config_t* config)
+void ide_phy_config(const ide_phy_config_t* config)
 {
     if (g_rp2350_passive_sniffer) return;
 
     g_idecomm.enable_idephy = false;
-    delay(2);
+    busy_wait_us_32(CORE1_RESPONSE_DELAY);
 
     // Only initialize registers once after boot, after that ide_protocol handles it.
     static bool regs_inited = false;
@@ -100,8 +100,6 @@ void ide_phy_reset(const ide_phy_config_t* config)
     g_ide_phy.config = *config;
     g_ide_phy.watchdog_error = false;
 
-    // dbgmsg("ide_phy_reset");
-
     g_idecomm.enable_dev0          = config->enable_dev0;
     g_idecomm.enable_dev1          = config->enable_dev1;
     g_idecomm.enable_dev1_zeros    = config->enable_dev1_zeros;
@@ -120,13 +118,42 @@ void ide_phy_reset(const ide_phy_config_t* config)
 
     g_idecomm.enable_idephy = true;
 
-    delay(2);
+    busy_wait_us_32(CORE1_RESPONSE_DELAY);
     core1_log_poll();
 
     if (g_idecomm.requests & CORE1_REQ_SET_REGS)
     {
         logmsg("ERROR: Core1 is not responding.");
     }
+}
+
+void ide_phy_reset()
+{
+    if (g_rp2350_passive_sniffer) return;
+
+    g_idecomm.enable_idephy = false;
+    busy_wait_us_32(CORE1_RESPONSE_DELAY);
+    phy_ide_registers_t phyregs = g_idecomm.phyregs;
+    __sync_synchronize();
+
+    g_ide_phy.watchdog_error = false;
+
+    phyregs.state_irqreq = 0;
+    phyregs.state_datain = 0;
+    phyregs.state_dataout = 0;
+    g_idecomm.phyregs = phyregs;
+    ide_phy_post_request(CORE1_REQ_SET_REGS | CORE1_REQ_STOP_TRANSFERS);
+
+    g_idecomm.enable_idephy = true;
+
+    busy_wait_us_32(CORE1_RESPONSE_DELAY);
+    core1_log_poll();
+
+    if (g_idecomm.requests & CORE1_REQ_SET_REGS)
+    {
+        logmsg("ERROR: Core1 is not responding.");
+    }
+
 }
 
 void ide_phy_reset_from_watchdog()
@@ -171,7 +198,7 @@ ide_event_t ide_phy_get_events()
     if (flags & CORE1_EVT_HWRST)
     {
         ide_phy_clear_event(CORE1_EVT_HWRST);
-        delay(1);
+        busy_wait_us_32(CORE1_RESPONSE_DELAY);
         if (g_idecomm.events & CORE1_EVT_HWRST)
         {
             // Reset still continues, report when it ends
@@ -225,6 +252,18 @@ void ide_phy_set_regs(const ide_registers_t *regs)
 
     ide_phy_post_request(CORE1_REQ_SET_REGS);
     // dbgmsg("SET_REGS, status ", regs->status, " error ", regs->error, " lba_high ", regs->lba_high, " data_in ", (int)g_idecomm.phyregs.state_datain);
+}
+
+void ide_phy_set_pio_mode(int pio_mode)
+{
+    // Core1 uses different timing mode to support newer hosts with PIO mode >= 3.
+    // Both timings work for the vast majority of devices, but a slightly different
+    // handling of IORDY improves compatibility.
+    if (pio_mode != g_idecomm.pio_mode)
+    {
+        g_idecomm.pio_mode = pio_mode;
+        ide_phy_post_request(CORE1_REQ_CHANGE_PIO_MODE);
+    }
 }
 
 void ide_phy_start_write(uint32_t blocklen, int udma_mode)
@@ -453,7 +492,7 @@ uint8_t ide_phy_get_signals()
     {
         last_poll = time_now;
         ide_phy_post_request(CORE1_REQ_GET_SIGNALS);
-        sleep_us(10);
+        busy_wait_us_32(CORE1_RESPONSE_DELAY);
     }
 
     return g_idecomm.get_signals;

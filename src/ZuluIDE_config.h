@@ -31,7 +31,7 @@
 #include <ZuluIDE_platform.h>
 
 // Use variables for version number
-#define FW_VER_NUM      "2025.12.30"
+#define FW_VER_NUM      "2026.02.12"
 #define FW_VER_SUFFIX   "release"
 #define ZULU_FW_VERSION FW_VER_NUM "-" FW_VER_SUFFIX
 
@@ -69,3 +69,6 @@
 
 // Prefix for command file to create new image (case-insensitive)
 #define CREATEFILE "create"
+
+// Name of startup sound file
+#define STARTUPSOUND "startup.wav"

@@ -232,11 +232,13 @@ bool IDERigidDevice::cmd_set_features(ide_registers_t *regs)
         {
             m_ata_state.udma_mode = -1;
             dbgmsg("-- Set PIO default transfer mode");
+            ide_phy_set_pio_mode(0);
         }
         else if (mode_major == 1 && mode_minor <= m_phy_caps.max_pio_mode)
         {
             m_ata_state.udma_mode = -1;
             dbgmsg("-- Set PIO transfer mode ", (int)mode_minor);
+            ide_phy_set_pio_mode(mode_minor);
         }
         else if (mode_major == 8 && mode_minor <= m_phy_caps.max_udma_mode)
         {
@@ -541,7 +543,9 @@ bool IDERigidDevice::cmd_identify_device(ide_registers_t *regs)
      // Generic IDE hard drive
     uint64_t lba = capacity_lba();
 
-    idf[IDE_IDENTIFY_OFFSET_GENERAL_CONFIGURATION] = (m_devinfo.removable ? 0x80 : 0x40); // Device type
+    // Word 0 General Configuration - mostly depreciated in later versions of ATA-2, but some old ATA-1 hosts/drivers may expect specific values
+    idf[IDE_IDENTIFY_OFFSET_GENERAL_CONFIGURATION] = (m_devconfig.ide_identify_gencfg ? m_devconfig.ide_identify_gencfg : (m_devinfo.removable ? 0x80 : 0x40)); // Device type
+
     idf[IDE_IDENTIFY_OFFSET_NUM_CYLINDERS] = m_devinfo.cylinders;
     idf[IDE_IDENTIFY_OFFSET_NUM_HEADS] = m_devinfo.heads;
     idf[IDE_IDENTIFY_OFFSET_BYTES_PER_TRACK] = m_devinfo.bytes_per_sector * m_devinfo.sectors_per_track;

@@ -30,6 +30,7 @@
 #include "ZuluIDE_config.h"
 #include "ZuluIDE_platform.h"
 #include "ZuluIDE_msc.h"
+#include "ZuluIDE_audio.h"
 #include "ZuluIDE_log.h"
 #include "ide_protocol.h"
 #include "ide_cdrom.h"
@@ -574,6 +575,7 @@ void setupStatusController()
   }
   else
   {
+        g_ide_device->set_loaded_without_media(false);
         loadFirstImage();
   }
 }
@@ -651,25 +653,23 @@ void clear_image() {
 
 void status_observer(const zuluide::status::SystemStatus& current) {
   // We need to check and see what changes have occurred.
-  if (g_ide_device->is_loaded_without_media() && current.HasLoadedImage()) {
+  if (!current.HasLoadedImage() && current.IsEject())
+  {
+    g_ide_device->button_eject_media();
+  }
+  else if (g_ide_device->is_loaded_without_media() && current.HasLoadedImage()) {
 
     load_image(current.GetLoadedImage());
     g_ide_device->set_loaded_without_media(false);
     g_loadedFirstImage = true;
-    g_ide_device->loaded_new_media();
   }
   else if ((g_loadedFirstImage && !current.LoadedImagesAreEqual(g_previous_controller_status))) {
     // The current image has changed.
     if (current.HasLoadedImage())
     {
       load_image(current.GetLoadedImage());
-      g_ide_device->loaded_new_media();
     } 
-    else
-    {
-      if (!g_ide_device->is_load_deferred())
-        g_ide_device->set_loaded_without_media(true);
-    }
+
   }
   g_previous_controller_status = current;
 }
@@ -804,6 +804,14 @@ void zuluide_init(void)
     // Set to ejected state if there is no media present
     g_ide_device->eject_media();
   }
+
+#ifdef STARTUPSOUND
+  if (g_sdcard_present && SD.exists(STARTUPSOUND))
+  {
+    logmsg("Playing " STARTUPSOUND);
+    audio_play_wav(STARTUPSOUND);
+  }
+#endif
 
   blinkStatus(BLINK_STATUS_OK);
   logmsg("Initialization complete!");
