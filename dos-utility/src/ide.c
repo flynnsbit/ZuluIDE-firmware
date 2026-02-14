@@ -345,6 +345,48 @@ int atapi_packet_cmd(ide_drive_t *drive, const uint8_t *cdb,
 }
 
 /*
+ * Send ATAPI packet command with UNIT ATTENTION retry
+ * Wraps atapi_packet_cmd() to automatically clear and retry on
+ * UNIT ATTENTION (sense key 0x06), which is commonly reported
+ * after media changes on ATAPI devices.
+ */
+#define ATAPI_MAX_RETRIES 2
+
+static int atapi_packet_cmd_retry(ide_drive_t *drive, const uint8_t *cdb,
+                                  uint8_t *buffer, uint16_t buflen, int direction)
+{
+    int ret;
+    int retries;
+    uint8_t sense_cdb[12] = {0};
+    uint8_t sense[18];
+    
+    for (retries = 0; retries <= ATAPI_MAX_RETRIES; retries++) {
+        ret = atapi_packet_cmd(drive, cdb, buffer, buflen, direction);
+        if (ret != IDE_ERR_COMMAND) {
+            return ret;  /* Success or non-command error */
+        }
+        
+        /* Command failed - issue REQUEST SENSE to check cause */
+        sense_cdb[0] = ATAPI_CMD_REQUEST_SENSE;
+        sense_cdb[4] = 18;
+        memset(sense, 0, sizeof(sense));
+        
+        if (atapi_packet_cmd(drive, sense_cdb, sense, 18, 1) != IDE_OK) {
+            return ret;  /* Can't even get sense data, give up */
+        }
+        
+        /* Check for UNIT ATTENTION (sense key 0x06) */
+        if ((sense[2] & 0x0F) != 0x06) {
+            return ret;  /* Not UNIT ATTENTION, return original error */
+        }
+        
+        /* UNIT ATTENTION cleared by REQUEST SENSE, retry the command */
+    }
+    
+    return ret;  /* Exhausted retries */
+}
+
+/*
  * ATAPI TEST UNIT READY
  */
 int atapi_test_unit_ready(ide_drive_t *drive)
@@ -366,7 +408,7 @@ int atapi_inquiry(ide_drive_t *drive, uint8_t *buffer, uint8_t len)
     cdb[0] = ATAPI_CMD_INQUIRY;
     cdb[4] = len;
     
-    return atapi_packet_cmd(drive, cdb, buffer, len, 1);
+    return atapi_packet_cmd_retry(drive, cdb, buffer, len, 1);
 }
 
 /*
@@ -381,7 +423,7 @@ int atapi_start_stop_unit(ide_drive_t *drive, uint8_t start, uint8_t loej)
     cdb[0] = ATAPI_CMD_START_STOP_UNIT;
     cdb[4] = (loej ? SSU_LOEJ : 0) | (start ? SSU_START : 0);
     
-    return atapi_packet_cmd(drive, cdb, NULL, 0, 0);
+    return atapi_packet_cmd_retry(drive, cdb, NULL, 0, 0);
 }
 
 /*
@@ -410,7 +452,7 @@ int atapi_get_event_status(ide_drive_t *drive, uint8_t *buffer, uint8_t len)
     cdb[7] = 0;
     cdb[8] = len;
     
-    return atapi_packet_cmd(drive, cdb, buffer, len, 1);
+    return atapi_packet_cmd_retry(drive, cdb, buffer, len, 1);
 }
 
 /* ===================================================================
@@ -430,7 +472,7 @@ int zuluide_get_image_count(ide_drive_t *drive, uint16_t *count)
     
     cdb[0] = ATAPI_CMD_ZULUIDE_COUNT;
     
-    ret = atapi_packet_cmd(drive, cdb, buffer, sizeof(buffer), 1);
+    ret = atapi_packet_cmd_retry(drive, cdb, buffer, sizeof(buffer), 1);
     if (ret == IDE_OK) {
         *count = buffer[0] | ((uint16_t)buffer[1] << 8);
     }
@@ -450,7 +492,7 @@ int zuluide_list_images(ide_drive_t *drive, uint8_t *buffer, uint16_t buflen, ui
     cdb[7] = (buflen >> 8) & 0xFF;
     cdb[8] = buflen & 0xFF;
     
-    return atapi_packet_cmd(drive, cdb, buffer, buflen, 1);
+    return atapi_packet_cmd_retry(drive, cdb, buffer, buflen, 1);
 }
 
 /*
@@ -464,7 +506,7 @@ int zuluide_get_current_image(ide_drive_t *drive, char *filename, uint16_t maxle
     cdb[7] = (maxlen >> 8) & 0xFF;
     cdb[8] = maxlen & 0xFF;
     
-    return atapi_packet_cmd(drive, cdb, (uint8_t *)filename, maxlen, 1);
+    return atapi_packet_cmd_retry(drive, cdb, (uint8_t *)filename, maxlen, 1);
 }
 
 /*
@@ -478,7 +520,7 @@ int zuluide_select_image(ide_drive_t *drive, uint16_t index)
     cdb[2] = index & 0xFF;
     cdb[3] = (index >> 8) & 0xFF;
     
-    return atapi_packet_cmd(drive, cdb, NULL, 0, 0);
+    return atapi_packet_cmd_retry(drive, cdb, NULL, 0, 0);
 }
 
 /*
@@ -494,7 +536,7 @@ int zuluide_select_image_by_name(ide_drive_t *drive, const char *filename)
     cdb[7] = (len >> 8) & 0xFF;
     cdb[8] = len & 0xFF;
     
-    return atapi_packet_cmd(drive, cdb, (uint8_t *)filename, len, 2);
+    return atapi_packet_cmd_retry(drive, cdb, (uint8_t *)filename, len, 2);
 }
 
 /*
@@ -506,7 +548,7 @@ int zuluide_next_image(ide_drive_t *drive)
     
     cdb[0] = ATAPI_CMD_ZULUIDE_NEXT;
     
-    return atapi_packet_cmd(drive, cdb, NULL, 0, 0);
+    return atapi_packet_cmd_retry(drive, cdb, NULL, 0, 0);
 }
 
 /*
@@ -518,7 +560,7 @@ int zuluide_prev_image(ide_drive_t *drive)
     
     cdb[0] = ATAPI_CMD_ZULUIDE_PREV;
     
-    return atapi_packet_cmd(drive, cdb, NULL, 0, 0);
+    return atapi_packet_cmd_retry(drive, cdb, NULL, 0, 0);
 }
 
 /*
@@ -532,5 +574,5 @@ int zuluide_get_info(ide_drive_t *drive, uint8_t *buffer, uint16_t buflen)
     cdb[7] = (buflen >> 8) & 0xFF;
     cdb[8] = buflen & 0xFF;
     
-    return atapi_packet_cmd(drive, cdb, buffer, buflen, 1);
+    return atapi_packet_cmd_retry(drive, cdb, buffer, buflen, 1);
 }
