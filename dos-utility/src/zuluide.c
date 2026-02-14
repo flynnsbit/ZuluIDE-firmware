@@ -359,14 +359,36 @@ static int cmd_info(void)
     }
     
     /* Try ZuluIDE-specific info command */
-    if (g_config.verbose) {
-        uint8_t info[256];
+    {
+        uint8_t info[64];
+        memset(info, 0, sizeof(info));
         ret = zuluide_get_info(&g_drive, info, sizeof(info));
-        if (ret == IDE_OK) {
-            printf("\nZuluIDE Extended Info:\n");
-            printf("  (Data received - Toolbox supported)\n");
+        if (ret == IDE_OK && memcmp(info, "ZUTB", 4) == 0) {
+            char build_str[17];
+            const char *devtype_str;
+            
+            printf("\nZuluIDE Toolbox:\n");
+            printf("  Protocol:  v%u\n", info[4]);
+            
+            switch (info[5]) {
+                case 0x00: devtype_str = "CD-ROM"; break;
+                case 0x05: devtype_str = "CD-ROM"; break;
+                case 0x07: devtype_str = "Optical"; break;
+                default:   devtype_str = "Unknown"; break;
+            }
+            printf("  Dev Type:  %s (0x%02X)\n", devtype_str, info[5]);
+            
+            memcpy(build_str, &info[8], 16);
+            build_str[16] = '\0';
+            if (build_str[0]) {
+                printf("  Build:     %s\n", build_str);
+            }
+            
+            if (g_config.verbose) {
+                printf("  FW Bytes:  %u.%u\n", info[6], info[7]);
+            }
         }
-        else {
+        else if (g_config.verbose) {
             printf("\nZuluIDE Toolbox: Not available\n");
         }
     }
