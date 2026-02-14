@@ -580,22 +580,27 @@ static int cmd_list(void)
     
     printf("Found %u images:\n\n", count);
     
-    /* List images */
-    memset(buffer, 0, sizeof(buffer));
-    ret = zuluide_list_images(&g_drive, buffer, sizeof(buffer), 0);
-    if (ret != IDE_OK) {
-        printf("Error reading image list: %s\n", get_error_string(ret));
-        return ret;
-    }
-    
-    /* Parse and display image list */
-    /* Format: each entry is null-terminated filename */
-    p = (char *)buffer;
+    /* List images with pagination */
     i = 0;
-    while (*p && i < count) {
-        printf("  %3u. %s\n", i + 1, p);
-        p += strlen(p) + 1;
-        i++;
+    while (i < count) {
+        memset(buffer, 0, sizeof(buffer));
+        ret = zuluide_list_images(&g_drive, buffer, sizeof(buffer), i);
+        if (ret != IDE_OK) {
+            printf("Error reading image list: %s\n", get_error_string(ret));
+            return ret;
+        }
+        
+        /* Parse and display image list */
+        /* Format: each entry is null-terminated filename */
+        p = (char *)buffer;
+        if (*p == '\0') {
+            break;  /* No more data returned */
+        }
+        while (*p && i < count) {
+            printf("  %3u. %s\n", i + 1, p);
+            p += strlen(p) + 1;
+            i++;
+        }
     }
     
     printf("\n");
