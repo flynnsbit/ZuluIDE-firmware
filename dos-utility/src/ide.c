@@ -304,7 +304,7 @@ int atapi_packet_cmd(ide_drive_t *drive, const uint8_t *cdb,
             /* Limit to buffer size */
             transfer_len = (byte_count + 1) / 2;  /* Convert to words */
             if (total_read + byte_count > buflen) {
-                transfer_len = (buflen - total_read + 1) / 2;
+                transfer_len = (buflen - total_read) / 2;  /* Round down to avoid overrun */
             }
             
             /* Read data */
