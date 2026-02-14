@@ -338,13 +338,12 @@ bool IDEATAPIDevice::atapi_toolbox_get_info(const uint8_t *cmd)
     // Device type
     response[5] = m_devinfo.devtype;
     
-    // Firmware version (placeholder - should come from build system)
-    response[6] = 1;  // Major
-    response[7] = 0;  // Minor
+    // Firmware version bytes (protocol v2: use toolbox protocol version)
+    response[6] = TOOLBOX_PROTOCOL_VERSION;
+    response[7] = 0;
     
-    // Build string
-    const char *build = "ZuluIDE-Toolbox";
-    strncpy((char *)&response[8], build, 16);
+    // Build string - include actual firmware version
+    strncpy((char *)&response[8], ZULU_FW_VERSION, 16);
     
     dbgmsg("Toolbox: GET_INFO");
     
